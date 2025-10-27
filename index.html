@@ -1,113 +1,159 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<title>母屋屋根と垂木掛け高さクリアランス計算</title>
-<style>
-  body { font-family: 'Segoe UI',sans-serif; margin:20px; background:#f8fafc; }
-  canvas { border:1px solid #ccc; margin-top:20px; background:#fff; }
-  label { display:block; margin-top:8px; }
-  input { width:80px; text-align:right; }
-  .warn { color:#d97706; font-weight:bold; }
-  .error { color:#dc2626; font-weight:bold; }
-  .ok { color:#15803d; font-weight:bold; }
-</style>
-</head>
-<body>
-<h2>母屋屋根と垂木掛け高さクリアランス計算</h2>
+import React, { useState, useRef, useEffect } from 'react';
 
-<label>母屋屋根の外壁からの水平寸法 D(mm): <input id="D" value="800"></label>
-<label>母屋屋根の高さ Z_h(mm): <input id="Zh" value="300"></label>
-<label>垂木掛け高さ Hg(mm): <input id="Hg" value="200"></label>
-<label>垂木掛けの厚み(高さ) Hkake(mm): <input id="Hkake" value="67"></label>
-<label>サッシ上端の高さ S(mm): <input id="S" value="2100"></label>
+// 最初から要件を読み直して作り直した、プレビュー対応の最終安定版です。
+// 表示・判定の対象は次の2点のみ：
+//  1) サッシ上端 → 垂木掛け下端（壁側 x=0）
+//  2) 母屋屋根 ↔ 垂木上端（x=D）
+// ・10mm未満は「危険域」表示、負値は「干渉」表示。
+// ・D の位置は破線で可視化、サッシ上端 S は水平破線で可視化。
+// ・角度は 10°固定（必要時のみ変更可）。
 
-<button onclick="draw()">計算・描画</button>
+export default function App() {
+  // 入力値
+  const [L, setL] = useState(350);      // 母屋屋根の斜め寸法 L（mm）
+  const [D, setD] = useState(200);      // 母屋屋根の水平寸法 D（mm）
+  const [S, setS] = useState(80);       // サッシ上端 → 軒天 S（mm）
+  const [Hg, setHg] = useState(200);    // 垂木掛け 上端高さ（壁側, z=Hg）
+  const [Hkake, setHkake] = useState(67); // 垂木掛け 厚み（下端 = Hg - Hkake）
+  const [theta, setTheta] = useState(10);  // 角度（既定10°）
 
-<div id="result"></div>
-<canvas id="cv" width="800" height="400"></canvas>
+  const canvasRef = useRef(null);
+  const [summaryHTML, setSummaryHTML] = useState('');
 
-<script>
-function draw(){
-  const D = +D_.value;
-  const Z_h = +Zh.value;
-  const Hg = +Hg_.value;
-  const Hkake = +Hkake_.value;
-  const S = +S_.value;
+  useEffect(() => { draw(); }, [L, D, S, Hg, Hkake, theta]);
 
-  const cv = document.getElementById('cv');
-  const ctx = cv.getContext('2d');
-  ctx.clearRect(0,0,cv.width,cv.height);
+  const rad = (d) => d * Math.PI / 180;
+  const tan = (d) => Math.tan(rad(d));
 
-  const W = cv.width, H = cv.height, m = 50;
-  const scale = 0.1; // mm→pxの縮尺(仮)
-  const X = mm => m + mm*scale;
-  const Y = mm => H - m - mm*scale;
+  function draw(){
+    const cv = canvasRef.current;
+    const ctx = cv.getContext('2d');
+    ctx.clearRect(0,0,cv.width,cv.height);
 
-  // 垂木掛け位置
-  const y_HgTop = Y(Hg);
-  const y_HgBottom = Y(Hg - Hkake);
+    // 入力チェック
+    if(!isFinite(L) || !isFinite(D) || !isFinite(S) || !isFinite(Hg) || !isFinite(Hkake) || !isFinite(theta)) return;
+    if(L < D) {
+      setSummaryHTML(`<div style='color:#dc2626;font-weight:700'>エラー: L は D 以上にしてください。</div>`);
+      return;
+    }
 
-  // 垂木ライン（上端）
-  const tan10 = Math.tan(10 * Math.PI / 180);
-  const z_t = x => Hg + x * tan10; // 上端ライン
-  const z_b = x => (Hg - Hkake) + x * tan10; // 下端ライン
+    // 幾何
+    const Zh = Math.sqrt(Math.max(0, L*L - D*D));        // 母屋屋根の高さ（@x=D）
+    const tanv = tan(theta);
+    const z_t = (x) => Hg + x * tanv;                    // 垂木 上端
+    const z_kake_bottom = (x) => (Hg - Hkake) + x * tanv;// 垂木掛け 下端（参考：描画は壁側で寸法）
 
-  // 描画範囲
-  ctx.strokeStyle='#94a3b8';
-  ctx.beginPath();
-  ctx.moveTo(X(0),Y(0)); ctx.lineTo(X(W),Y(0)); // 軒天
-  ctx.moveTo(X(0),Y(0)); ctx.lineTo(X(0),Y(H)); // 外壁
-  ctx.stroke();
+    // 判定対象の差分値（+は余裕、-は不足）
+    const diffMother = Zh - z_t(D);            // 母屋屋根（上） - 垂木上端（@D）
+    const diffSash   = (Hg - Hkake) - S;       // 垂木掛け下端（@0） - サッシ上端 S
 
-  // 垂木掛け上端・下端
-  ctx.fillStyle="#94a3b8";
-  ctx.fillText("垂木掛け", X(10), Y(Hg - Hkake/2));
-  ctx.strokeStyle='#0ea5e9';
-  ctx.beginPath(); ctx.moveTo(X(0),Y(Hg)); ctx.lineTo(X(D),Y(z_t(D))); ctx.stroke();
-  ctx.strokeStyle='#0284c7';
-  ctx.beginPath(); ctx.moveTo(X(0),Y(Hg - Hkake)); ctx.lineTo(X(D),Y(z_b(D))); ctx.stroke();
+    // スケール計算
+    const W=cv.width, H=cv.height, m=36;
+    const Xmax = Math.max(D, 600);
+    const Zmax = Math.max(S, Zh, z_t(D), z_kake_bottom(0), z_kake_bottom(D)) * 1.25 + 20;
+    const sx = (W - 2*m) / (Xmax || 1);
+    const sz = (H - 2*m) / (Zmax || 1);
+    const X = (x) => m + x*sx;
+    const Y = (z) => m + z*sz; // 下向きが＋
 
-  // 母屋屋根
-  ctx.strokeStyle='#facc15';
-  ctx.beginPath(); ctx.moveTo(X(0),Y(0)); ctx.lineTo(X(D),Y(Z_h)); ctx.stroke();
-  ctx.fillStyle="#713f12"; ctx.fillText("母屋屋根", X(D/2), Y(Z_h)+15);
+    // === ガイド ===
+    // 軒天 z=0（基準）
+    ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(m, Y(0)); ctx.lineTo(W-m, Y(0)); ctx.stroke();
+    // 外壁 x=0（基準）
+    ctx.beginPath(); ctx.moveTo(X(0), m); ctx.lineTo(X(0), H-m); ctx.stroke();
 
-  // 寸法線・数値
-  const drawDim = (x, y1, y2, color, label) => {
-    ctx.strokeStyle=color; ctx.lineWidth=2;
-    ctx.beginPath(); ctx.moveTo(X(x),Y(y1)); ctx.lineTo(X(x),Y(y2)); ctx.stroke();
-    ctx.fillStyle=color;
-    ctx.fillText(label, X(x)+8, (Y(y1)+Y(y2))/2);
-  };
+    // サッシ上端 S の水平破線
+    ctx.save(); ctx.setLineDash([6,4]); ctx.strokeStyle = '#2563eb';
+    ctx.beginPath(); ctx.moveTo(X(0), Y(S)); ctx.lineTo(W-m, Y(S)); ctx.stroke(); ctx.restore();
+    ctx.fillStyle = '#2563eb'; ctx.fillText(`サッシ上端 S=${S.toFixed(0)}mm`, X(8), Y(S)-6);
 
-  // ① サッシ上端→垂木掛け下端
-  const diffSash = (Hg - Hkake) - S;
-  drawDim(0, S, Hg - Hkake, '#0284c7', `サッシ上端→垂木掛け下端: ${diffSash.toFixed(1)}mm`);
+    // x = D の垂直破線
+    ctx.save(); ctx.setLineDash([6,4]); ctx.strokeStyle = '#0ea5e9';
+    ctx.beginPath(); ctx.moveTo(X(D), m); ctx.lineTo(X(D), H-m); ctx.stroke(); ctx.restore();
+    ctx.fillStyle = '#0ea5e9'; ctx.fillText(`D=${D.toFixed(0)}mm`, X(D)+6, Y(0)-6);
 
-  // ② 母屋屋根↔垂木上端
-  const diffMother = Z_h - z_t(D);
-  drawDim(D, Z_h, z_t(D), '#facc15', `母屋屋根↔垂木上端: ${diffMother.toFixed(1)}mm`);
+    // === 形状 ===
+    // 垂木 上端（濃緑）
+    ctx.strokeStyle = '#15803d'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(X(0), Y(z_t(0))); ctx.lineTo(X(Xmax), Y(z_t(Xmax))); ctx.stroke();
+    // 垂木掛け 下端（明緑）
+    ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(X(0), Y(z_kake_bottom(0))); ctx.lineTo(X(Xmax), Y(z_kake_bottom(Xmax))); ctx.stroke();
 
-  // 判定
-  const res = document.getElementById('result');
-  res.innerHTML = "";
-  if(diffMother < 0){
-    res.innerHTML += `<div class="error">⚠ 母屋屋根と垂木が干渉しています (${diffMother.toFixed(1)}mm)</div>`;
-  }else if(diffMother < 10){
-    res.innerHTML += `<div class="warn">⚠ 母屋屋根と垂木のクリアランス10mm未満（${diffMother.toFixed(1)}mm）</div>`;
-  }else{
-    res.innerHTML += `<div class="ok">✅ 母屋屋根側クリアランスOK（${diffMother.toFixed(1)}mm）</div>`;
+    // 母屋屋根（赤）: 点(D, Zh)を通る直線（近傍だけ）
+    const slope = D>0 ? (Zh/D) : Math.tan(Math.PI/3);
+    const x1 = Math.max(0, D - Xmax*0.6), x2 = Math.min(Xmax, D + Xmax*0.6);
+    const z1 = Zh + (x1 - D) * slope; const z2 = Zh + (x2 - D) * slope;
+    ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(X(x1), Y(z1)); ctx.lineTo(X(x2), Y(z2)); ctx.stroke();
+
+    // === 寸法表示 ===
+    const drawDim = (x_px, y1_px, y2_px, color, label) => {
+      ctx.strokeStyle = color; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x_px, y1_px); ctx.lineTo(x_px, y2_px); ctx.stroke();
+      // 矢印
+      const arrow = (x,y,dir) => { const s=6; ctx.beginPath();
+        if(dir==='up'){ ctx.moveTo(x-s,y+s); ctx.lineTo(x,y); ctx.lineTo(x+s,y+s); }
+        else{ ctx.moveTo(x-s,y-s); ctx.lineTo(x,y); ctx.lineTo(x+s,y-s); }
+        ctx.stroke(); };
+      ctx.strokeStyle = color; arrow(x_px, y1_px, 'up'); arrow(x_px, y2_px, 'down');
+      const tx = x_px + 8; const ty = (y1_px + y2_px)/2 + 4;
+      // 背景
+      const text = label; const w = ctx.measureText(text).width + 10;
+      ctx.fillStyle = color.replace('1)', '0.12)').replace(')', '') || 'rgba(0,0,0,0.08)';
+      // 安全な背景色に変更
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.fillRect(tx-4, ty-14, w, 18);
+      ctx.fillStyle = color; ctx.fillText(text, tx, ty);
+    };
+
+    // 1) サッシ上端 → 垂木掛け下端（壁側）
+    drawDim(X(0)+40, Y(S), Y(Hg - Hkake), '#0284c7', `サッシ上端→垂木掛け下端: ${(diffSash).toFixed(1)}mm`);
+
+    // 2) 母屋屋根 ↔ 垂木上端（@x=D）
+    drawDim(X(D)-40, Y(Zh), Y(z_t(D)), '#eab308', `母屋屋根↔垂木上端: ${(diffMother).toFixed(1)}mm`);
+
+    // === 結果（10mmルール） ===
+    const lines = [];
+    lines.push(`<div>母屋屋根↔垂木上端（@x=D）: <b>${diffMother.toFixed(1)}mm</b></div>`);
+    lines.push(`<div>サッシ上端→垂木掛け下端（壁側）: <b>${diffSash.toFixed(1)}mm</b></div>`);
+
+    const warnMother = diffMother < 10 && diffMother >= 0;
+    const errMother  = diffMother < 0;
+    const warnSash   = diffSash < 10 && diffSash >= 0;
+    const errSash    = diffSash < 0;
+
+    if(errMother) lines.push(`<div style='color:#dc2626;font-weight:700'>⚠ 母屋側 干渉（不足 ${Math.abs(diffMother).toFixed(1)}mm）</div>`);
+    else if(warnMother) lines.push(`<div style='color:#d97706;font-weight:700'>⚠ 母屋側 クリアランス10mm未満（${diffMother.toFixed(1)}mm）</div>`);
+
+    if(errSash) lines.push(`<div style='color:#dc2626;font-weight:700'>⚠ サッシ側 干渉（垂木掛け下端が上に ${Math.abs(diffSash).toFixed(1)}mm）</div>`);
+    else if(warnSash) lines.push(`<div style='color:#d97706;font-weight:700'>⚠ サッシ側 クリアランス10mm未満（${diffSash.toFixed(1)}mm）</div>`);
+
+    if(!errMother && !warnMother && !errSash && !warnSash){
+      lines.push(`<div style='color:#15803d;font-weight:700'>✅ クリアランスOK（両側とも ≥10mm）</div>`);
+    }
+
+    setSummaryHTML(lines.join(''));
   }
 
-  if(diffSash < 0){
-    res.innerHTML += `<div class="error">⚠ サッシ上端より垂木掛け下端が下がっています (${diffSash.toFixed(1)}mm)</div>`;
-  }else if(diffSash < 10){
-    res.innerHTML += `<div class="warn">⚠ サッシ上端との間隔が10mm未満（${diffSash.toFixed(1)}mm）</div>`;
-  }else{
-    res.innerHTML += `<div class="ok">✅ サッシ側クリアランスOK（${diffSash.toFixed(1)}mm）</div>`;
-  }
+  return (
+    <div style={{padding:16}}>
+      <h2 style={{marginBottom:8}}>テラス屋根クリアランス（垂木掛け下端／母屋屋根）</h2>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,alignItems:'start'}}>
+        <div>
+          <label>母屋の屋根の斜め寸法 L(mm): <input type="number" value={L} onChange={e=>setL(+e.target.value||0)} /></label>
+          <label>母屋の屋根の水平寸法 D(mm): <input type="number" value={D} onChange={e=>setD(+e.target.value||0)} /></label>
+          <label>サッシ上端→軒天 S(mm): <input type="number" value={S} onChange={e=>setS(+e.target.value||0)} /></label>
+          <label>垂木掛け 上端高さ Hg(mm): <input type="number" value={Hg} onChange={e=>setHg(+e.target.value||0)} /></label>
+          <label>垂木掛け 厚み Hkake(mm): <input type="number" value={Hkake} onChange={e=>setHkake(+e.target.value||0)} /></label>
+          <label>角度 θ(°): <input type="number" value={theta} onChange={e=>setTheta(+e.target.value||0)} /></label>
+        </div>
+        <div>
+          <canvas ref={canvasRef} width={760} height={420} style={{border:'1px solid #cbd5e1',borderRadius:8,background:'#fff'}} />
+          <div style={{marginTop:10}} dangerouslySetInnerHTML={{__html: summaryHTML}} />
+        </div>
+      </div>
+    </div>
+  );
 }
-</script>
-</body>
-</html>
