@@ -1,0 +1,121 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>テラス屋根 クリアランス計算（10°勾配・垂木下端基準）</title>
+<style>
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans JP, sans-serif; padding: 20px; }
+  h1 { font-size: 1.3rem; }
+  label { display: block; margin-top: 10px; }
+  input[type="number"] { width: 100%; padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc; }
+  .btn { margin-top: 10px; padding: 8px 14px; border-radius: 8px; border: 1px solid #2563eb; background: #2563eb; color: #fff; cursor: pointer; }
+  canvas { border: 1px solid #ccc; border-radius: 8px; margin-top: 14px; }
+  .result { margin-top: 12px; background: #f8fafc; border: 1px dashed #ccc; padding: 10px; border-radius: 8px; white-space: pre-wrap; font-family: monospace; }
+  .ok { color: #166534; font-weight: 700; }
+  .warn { color: #b91c1c; font-weight: 700; }
+</style>
+</head>
+<body>
+<h1>テラス屋根クリアランス計算（10°勾配・垂木下端基準）</h1>
+<p>サッシ上端ギリギリまで垂木掛けを下げ、母屋屋根に干渉しないか確認します。</p>
+
+<label>母屋屋根の斜め寸法 L（mm）</label>
+<input type="number" id="L" value="350">
+
+<label>母屋屋根の水平寸法 D（mm）</label>
+<input type="number" id="D" value="200">
+
+<label>サッシ上端→軒天 S（mm）</label>
+<input type="number" id="S" value="80">
+
+<label>サッシの飛び出し P（mm）</label>
+<input type="number" id="P" value="30">
+
+<label>垂木掛けの高さ Hg（mm）</label>
+<input type="number" id="Hg" value="67">
+
+<label>垂木の厚み r（mm）</label>
+<input type="number" id="r" value="40">
+
+<label>角度 θ（°）</label>
+<input type="number" id="theta" value="10">
+
+<button class="btn" onclick="calc()">計算する</button>
+
+<canvas id="cv" width="700" height="400"></canvas>
+<div class="result" id="out">（結果がここに表示されます）</div>
+
+<script>
+function calc(){
+  const L=+L_in.value,D=+D_in.value,S=+S_in.value,P=+P_in.value,Hg=+Hg_in.value,r=+r_in.value,deg=+th_in.value;
+}
+
+const L_in=document.getElementById('L');
+const D_in=document.getElementById('D');
+const S_in=document.getElementById('S');
+const P_in=document.getElementById('P');
+const Hg_in=document.getElementById('Hg');
+const r_in=document.getElementById('r');
+const th_in=document.getElementById('theta');
+const out=document.getElementById('out');
+const cv=document.getElementById('cv');
+const ctx=cv.getContext('2d');
+
+function rad(d){return d*Math.PI/180;}
+function tan(d){return Math.tan(rad(d));}
+
+function calc(){
+  const L=+L_in.value,D=+D_in.value,S=+S_in.value,P=+P_in.value;
+  let Hg=+Hg_in.value,r=+r_in.value,deg=+th_in.value;
+  const Zh=Math.sqrt(Math.max(0,L*L-D*D));
+  const tanv=tan(deg);
+  const zt=x=>Hg+x*tanv;
+  const zb=x=>zt(x)+r;
+  const Hg_sash=S-(r+P*tanv);
+  const Hg_mother=Zh-(r+D*tanv);
+  const Hg_target=Math.max(Hg_sash,Hg_mother);
+  const clr_sash=zb(P)-S;
+  const clr_mother=zb(D)-Zh;
+
+  let lines=`母屋勾配角 φ=${(Math.atan2(Zh,D)*180/Math.PI).toFixed(2)}°\n`;
+  lines+=`サッシ基準 Hg_min_sash=${Hg_sash.toFixed(2)}mm\n母屋基準 Hg_min_mother=${Hg_mother.toFixed(2)}mm\n`;
+  lines+=`必要高さ Hg_target=${Hg_target.toFixed(2)}mm\n\n`;
+  lines+=`サッシ上端→垂木下端 @x=P: ${clr_sash.toFixed(2)}mm\n母屋→垂木下端 @x=D: ${clr_mother.toFixed(2)}mm\n`;
+
+  if(clr_sash<0||clr_mother<0){
+    lines+=`\n⚠ 干渉の恐れあり\n`;
+  } else {
+    lines+=`\n✅ 干渉なし\n`;
+  }
+  out.textContent=lines;
+  draw(L,D,S,P,Hg,r,deg,Zh,clr_sash<0||clr_mother<0);
+}
+
+function draw(L,D,S,P,Hg,r,deg,Zh,alert){
+  const W=cv.width,H=cv.height,m=40;
+  ctx.clearRect(0,0,W,H);
+  const tanv=tan(deg);
+  const zt=x=>Hg+x*tanv;
+  const zb=x=>zt(x)+r;
+  const Xmax=Math.max(D,P,600);
+  const Zmax=Math.max(Zh,zb(D),zb(P),S)*1.2;
+  const sx=(W-2*m)/(Xmax||1),sz=(H-2*m)/(Zmax||1);
+  const X=x=>m+x*sx,Y=z=>m+z*sz;
+
+  ctx.strokeStyle='#ccc';ctx.beginPath();ctx.moveTo(m,Y(0));ctx.lineTo(W-m,Y(0));ctx.stroke();
+  ctx.strokeStyle='#888';ctx.beginPath();ctx.moveTo(X(0),m);ctx.lineTo(X(0),H-m);ctx.stroke();
+
+  ctx.fillStyle='rgba(37,99,235,0.1)';ctx.fillRect(X(0),Y(0),X(P)-X(0),Y(S)-Y(0));ctx.strokeStyle='#2563eb';ctx.strokeRect(X(0),Y(0),X(P)-X(0),Y(S)-Y(0));
+
+  ctx.strokeStyle='#15803d';ctx.beginPath();ctx.moveTo(X(0),Y(zt(0)));ctx.lineTo(X(Xmax),Y(zt(Xmax)));ctx.stroke();
+  ctx.strokeStyle=alert?'#ef4444':'#22c55e';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(X(0),Y(zb(0)));ctx.lineTo(X(Xmax),Y(zb(Xmax)));ctx.stroke();
+
+  ctx.strokeStyle='#dc2626';ctx.beginPath();ctx.moveTo(X(D-200),Y(Zh-(200*Zh/D)));ctx.lineTo(X(D+200),Y(Zh+(200*Zh/D)));ctx.stroke();
+}
+
+calc();
+</script>
+</body>
+</html>
