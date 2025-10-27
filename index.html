@@ -1,12 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-// 最初から要件を読み直して作り直した、プレビュー対応の最終安定版です。
-// 表示・判定の対象は次の2点のみ：
-//  1) サッシ上端 → 垂木掛け下端（壁側 x=0）
-//  2) 母屋屋根 ↔ 垂木上端（x=D）
-// ・10mm未満は「危険域」表示、負値は「干渉」表示。
-// ・D の位置は破線で可視化、サッシ上端 S は水平破線で可視化。
-// ・角度は 10°固定（必要時のみ変更可）。
+// 指示反映版：
+//  - サッシより下に垂木掛けが行くことは「ない」前提 → サッシ関連寸法は表示しない
+//  - 母屋屋根がアルミテラスに干渉している場合は「干渉中」とだけ表示（数値は出さない）
+//  - 母屋屋根が上にある時（= クリアランス >= 0）のみ、数値を明記
+//  - 図では「母屋屋根 ↔ 垂木上端（@x=D）」の寸法線のみ描画
+//  - S(水平破線)とD(垂直破線)のガイドは残す
 
 export default function App() {
   // 入力値
@@ -41,11 +40,10 @@ export default function App() {
     const Zh = Math.sqrt(Math.max(0, L*L - D*D));        // 母屋屋根の高さ（@x=D）
     const tanv = tan(theta);
     const z_t = (x) => Hg + x * tanv;                    // 垂木 上端
-    const z_kake_bottom = (x) => (Hg - Hkake) + x * tanv;// 垂木掛け 下端（参考：描画は壁側で寸法）
+    const z_kake_bottom = (x) => (Hg - Hkake) + x * tanv;// 垂木掛け 下端（参照）
 
-    // 判定対象の差分値（+は余裕、-は不足）
+    // 判定対象（母屋のみ）
     const diffMother = Zh - z_t(D);            // 母屋屋根（上） - 垂木上端（@D）
-    const diffSash   = (Hg - Hkake) - S;       // 垂木掛け下端（@0） - サッシ上端 S
 
     // スケール計算
     const W=cv.width, H=cv.height, m=36;
@@ -63,7 +61,7 @@ export default function App() {
     // 外壁 x=0（基準）
     ctx.beginPath(); ctx.moveTo(X(0), m); ctx.lineTo(X(0), H-m); ctx.stroke();
 
-    // サッシ上端 S の水平破線
+    // サッシ上端 S の水平破線（ガイドのみ）
     ctx.save(); ctx.setLineDash([6,4]); ctx.strokeStyle = '#2563eb';
     ctx.beginPath(); ctx.moveTo(X(0), Y(S)); ctx.lineTo(W-m, Y(S)); ctx.stroke(); ctx.restore();
     ctx.fillStyle = '#2563eb'; ctx.fillText(`サッシ上端 S=${S.toFixed(0)}mm`, X(8), Y(S)-6);
@@ -88,7 +86,7 @@ export default function App() {
     ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(X(x1), Y(z1)); ctx.lineTo(X(x2), Y(z2)); ctx.stroke();
 
-    // === 寸法表示 ===
+    // === 寸法表示（母屋↔垂木上端のみ） ===
     const drawDim = (x_px, y1_px, y2_px, color, label) => {
       ctx.strokeStyle = color; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(x_px, y1_px); ctx.lineTo(x_px, y2_px); ctx.stroke();
@@ -99,39 +97,25 @@ export default function App() {
         ctx.stroke(); };
       ctx.strokeStyle = color; arrow(x_px, y1_px, 'up'); arrow(x_px, y2_px, 'down');
       const tx = x_px + 8; const ty = (y1_px + y2_px)/2 + 4;
-      // 背景
       const text = label; const w = ctx.measureText(text).width + 10;
-      ctx.fillStyle = color.replace('1)', '0.12)').replace(')', '') || 'rgba(0,0,0,0.08)';
-      // 安全な背景色に変更
       ctx.fillStyle = 'rgba(255,255,255,0.6)';
       ctx.fillRect(tx-4, ty-14, w, 18);
       ctx.fillStyle = color; ctx.fillText(text, tx, ty);
     };
 
-    // 1) サッシ上端 → 垂木掛け下端（壁側）
-    drawDim(X(0)+40, Y(S), Y(Hg - Hkake), '#0284c7', `サッシ上端→垂木掛け下端: ${(diffSash).toFixed(1)}mm`);
+    // diffMother >= 0 のときだけ寸法線＆数値を描く
+    if (diffMother >= 0) {
+      drawDim(X(D)-40, Y(Zh), Y(z_t(D)), '#eab308', `母屋屋根↔垂木上端: ${(diffMother).toFixed(1)}mm`);
+    }
 
-    // 2) 母屋屋根 ↔ 垂木上端（@x=D）
-    drawDim(X(D)-40, Y(Zh), Y(z_t(D)), '#eab308', `母屋屋根↔垂木上端: ${(diffMother).toFixed(1)}mm`);
-
-    // === 結果（10mmルール） ===
+    // === 結果（母屋のみ、10mmルール） ===
     const lines = [];
-    lines.push(`<div>母屋屋根↔垂木上端（@x=D）: <b>${diffMother.toFixed(1)}mm</b></div>`);
-    lines.push(`<div>サッシ上端→垂木掛け下端（壁側）: <b>${diffSash.toFixed(1)}mm</b></div>`);
-
-    const warnMother = diffMother < 10 && diffMother >= 0;
-    const errMother  = diffMother < 0;
-    const warnSash   = diffSash < 10 && diffSash >= 0;
-    const errSash    = diffSash < 0;
-
-    if(errMother) lines.push(`<div style='color:#dc2626;font-weight:700'>⚠ 母屋側 干渉（不足 ${Math.abs(diffMother).toFixed(1)}mm）</div>`);
-    else if(warnMother) lines.push(`<div style='color:#d97706;font-weight:700'>⚠ 母屋側 クリアランス10mm未満（${diffMother.toFixed(1)}mm）</div>`);
-
-    if(errSash) lines.push(`<div style='color:#dc2626;font-weight:700'>⚠ サッシ側 干渉（垂木掛け下端が上に ${Math.abs(diffSash).toFixed(1)}mm）</div>`);
-    else if(warnSash) lines.push(`<div style='color:#d97706;font-weight:700'>⚠ サッシ側 クリアランス10mm未満（${diffSash.toFixed(1)}mm）</div>`);
-
-    if(!errMother && !warnMother && !errSash && !warnSash){
-      lines.push(`<div style='color:#15803d;font-weight:700'>✅ クリアランスOK（両側とも ≥10mm）</div>`);
+    if (diffMother < 0) {
+      lines.push(`<div style='color:#dc2626;font-weight:700'>⚠ 母屋屋根がアルミテラスに干渉しています（数値表示なし）</div>`);
+    } else if (diffMother < 10) {
+      lines.push(`<div style='color:#d97706;font-weight:700'>⚠ クリアランス10mm未満（母屋側 ${diffMother.toFixed(1)}mm）</div>`);
+    } else {
+      lines.push(`<div style='color:#15803d;font-weight:700'>✅ クリアランスOK（母屋側 ${diffMother.toFixed(1)}mm）</div>`);
     }
 
     setSummaryHTML(lines.join(''));
@@ -139,7 +123,7 @@ export default function App() {
 
   return (
     <div style={{padding:16}}>
-      <h2 style={{marginBottom:8}}>テラス屋根クリアランス（垂木掛け下端／母屋屋根）</h2>
+      <h2 style={{marginBottom:8}}>テラス屋根クリアランス（母屋屋根のみ表示）</h2>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,alignItems:'start'}}>
         <div>
           <label>母屋の屋根の斜め寸法 L(mm): <input type="number" value={L} onChange={e=>setL(+e.target.value||0)} /></label>
