@@ -143,6 +143,12 @@
       return (
         <div className="max-w-7xl mx-auto p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
           <div className="mb-8">
+            <button 
+              onClick={() => { window.location.href = "../"; }}
+              className="mb-4 px-6 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold rounded-lg transition"
+            >
+              ← 目次に戻る
+            </button>
             <h1 className="text-4xl font-bold text-gray-800 mb-2">アルミテラス屋根 干渉チェック</h1>
             <p className="text-gray-600">母屋屋根とテラス屋根（10°勾配）の干渉を計算・視覚化します</p>
           </div>
