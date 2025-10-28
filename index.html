@@ -1,469 +1,501 @@
-import React, { useState, useEffect } from 'react';
-import { AlertTriangle, CheckCircle, AlertCircle } from 'lucide-react';
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>アルミテラス屋根 干渉チェック</title>
+  
+  <!-- Google Analytics (測定IDを自分のものに置き換えてください) -->
+  <!-- 
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-XXXXXXXXXX');
+  </script>
+  -->
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- React & React DOM -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  
+  <!-- Babel Standalone -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  
+  <script type="text/babel">
+    const { useState, useEffect } = React;
 
-export default function TerraceRoofCalculator() {
-  const [inputs, setInputs] = useState({
-    mainRoofSlant: 530,
-    mainRoofHorizontal: 510,
-    sashToEaves: 200,
-    sashProjection: 30,
-    rafterSize: 67,
-  });
+    // Lucide React icons (inline)
+    const AlertTriangle = ({ className }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+    );
 
-  const [results, setResults] = useState(null);
+    const CheckCircle = ({ className }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+        <polyline points="22 4 12 14.01 9 11.01"/>
+      </svg>
+    );
 
-  const TERRACE_SLOPE = 10;
+    const AlertCircle = ({ className }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+    );
 
-  useEffect(() => {
-    if (inputs.mainRoofSlant && inputs.mainRoofHorizontal && inputs.sashToEaves && inputs.rafterSize) {
-      calculateInterference();
-    }
-  }, [inputs]);
+    function TerraceRoofCalculator() {
+      const [inputs, setInputs] = useState({
+        mainRoofSlant: 530,
+        mainRoofHorizontal: 510,
+        sashToEaves: 200,
+        sashProjection: 30,
+        rafterSize: 67,
+      });
 
-  const calculateInterference = () => {
-    const { mainRoofSlant, mainRoofHorizontal, sashToEaves, sashProjection, rafterSize } = inputs;
+      const [results, setResults] = useState(null);
 
-    // 母屋屋根の計算
-    const mainRoofVertical = Math.sqrt(Math.pow(mainRoofSlant, 2) - Math.pow(mainRoofHorizontal, 2));
-    const mainRoofAngle = Math.atan2(mainRoofVertical, mainRoofHorizontal) * (180 / Math.PI);
+      const TERRACE_SLOPE = 10;
 
-    // 勾配の計算
-    const terraceSlopeRad = TERRACE_SLOPE * Math.PI / 180;
-    const terraceSlopeRatio = Math.tan(terraceSlopeRad);
-    const mainSlopeRatio = mainRoofVertical / mainRoofHorizontal;
+      useEffect(() => {
+        if (inputs.mainRoofSlant && inputs.mainRoofHorizontal && inputs.sashToEaves && inputs.rafterSize) {
+          calculateInterference();
+        }
+      }, [inputs]);
 
-    // 垂木掛けの高さ決定（サッシ上端から垂木上端までの高さ）
-    let rafterTopHeight = rafterSize; // 基準値
-    let rafterAdjustment = 0;
+      const calculateInterference = () => {
+        const { mainRoofSlant, mainRoofHorizontal, sashToEaves, sashProjection, rafterSize } = inputs;
 
-    // サッシの飛び出しによる干渉チェック
-    if (sashProjection > 0) {
-      // サッシ飛び出し位置での垂木の下がり量
-      const rafterDrop = sashProjection * terraceSlopeRatio;
-      
-      // サッシ上端から垂木下端までの必要高さ（切り上げ）
-      const requiredBottomHeight = Math.ceil(rafterDrop);
-      
-      // サッシ上端から垂木上端までの必要高さ（垂木下端 + 垂木サイズ）
-      const requiredTopHeight = requiredBottomHeight + rafterSize;
-      
-      // 基準値より高くする必要がある場合
-      if (requiredTopHeight > rafterSize) {
-        rafterAdjustment = requiredTopHeight - rafterSize;
-        rafterTopHeight = requiredTopHeight;
-      }
-    }
+        const mainRoofVertical = Math.sqrt(Math.pow(mainRoofSlant, 2) - Math.pow(mainRoofHorizontal, 2));
+        const mainRoofAngle = Math.atan2(mainRoofVertical, mainRoofHorizontal) * (180 / Math.PI);
 
-    // 母屋屋根先端でのクリアランス計算
-    const terraceTopAtEave = rafterTopHeight - mainRoofHorizontal * terraceSlopeRatio;
-    const mainRoofBottomAtEave = sashToEaves - mainRoofHorizontal * mainSlopeRatio;
-    const clearance = mainRoofBottomAtEave - terraceTopAtEave;
+        const terraceSlopeRad = TERRACE_SLOPE * Math.PI / 180;
+        const terraceSlopeRatio = Math.tan(terraceSlopeRad);
+        const mainSlopeRatio = mainRoofVertical / mainRoofHorizontal;
 
-    // 干渉判定
-    let status = '';
-    let message = '';
+        let rafterTopHeight = rafterSize;
+        let rafterAdjustment = 0;
 
-    if (clearance >= 10) {
-      status = 'safe';
-      message = `干渉しません。母屋屋根先端とのクリアランス: ${clearance.toFixed(0)}mm`;
-    } else if (clearance >= 0) {
-      status = 'warning';
-      message = `干渉する可能性があります。クリアランス: ${clearance.toFixed(0)}mm（10mm未満）`;
-    } else {
-      status = 'danger';
-      message = `干渉します！クリアランス: ${clearance.toFixed(0)}mm`;
-    }
-
-    setResults({
-      mainRoofAngle: mainRoofAngle.toFixed(1),
-      mainRoofVertical: mainRoofVertical.toFixed(0),
-      rafterTopHeight: rafterTopHeight.toFixed(1),
-      rafterAdjustment: rafterAdjustment.toFixed(1),
-      clearance: clearance.toFixed(1),
-      status,
-      message
-    });
-  };
-
-  const handleInputChange = (field, value) => {
-    const val = value === '' ? 0 : parseFloat(value);
-    setInputs(prev => ({
-      ...prev,
-      [field]: val || 0
-    }));
-  };
-
-  const handleInputFocus = (e) => {
-    e.target.value = '';
-  };
-
-  return (
-    <div className="max-w-7xl mx-auto p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-800 mb-2">アルミテラス屋根 干渉チェック</h1>
-        <p className="text-gray-600">母屋屋根とテラス屋根（10°勾配）の干渉を計算・視覚化します</p>
-      </div>
-      
-      <div className="grid lg:grid-cols-5 gap-6 mb-6">
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
-          <h2 className="text-2xl font-semibold text-gray-800 mb-6 border-b pb-3">寸法入力</h2>
+        if (sashProjection > 0) {
+          const rafterDrop = sashProjection * terraceSlopeRatio;
+          const requiredBottomHeight = Math.ceil(rafterDrop);
+          const requiredTopHeight = requiredBottomHeight + rafterSize;
           
-          <div className="space-y-5">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                母屋屋根の斜め寸法 (mm)
-              </label>
-              <input
-                type="number"
-                value={inputs.mainRoofSlant}
-                onChange={(e) => handleInputChange('mainRoofSlant', e.target.value)}
-                onFocus={handleInputFocus}
-                className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
+          if (requiredTopHeight > rafterSize) {
+            rafterAdjustment = requiredTopHeight - rafterSize;
+            rafterTopHeight = requiredTopHeight;
+          }
+        }
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                母屋屋根の水平寸法 (mm)
-              </label>
-              <input
-                type="number"
-                value={inputs.mainRoofHorizontal}
-                onChange={(e) => handleInputChange('mainRoofHorizontal', e.target.value)}
-                onFocus={handleInputFocus}
-                className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
+        const terraceTopAtEave = rafterTopHeight - mainRoofHorizontal * terraceSlopeRatio;
+        const mainRoofBottomAtEave = sashToEaves - mainRoofHorizontal * mainSlopeRatio;
+        const clearance = mainRoofBottomAtEave - terraceTopAtEave;
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                サッシ上端から軒天までの高さ (mm)
-              </label>
-              <input
-                type="number"
-                value={inputs.sashToEaves}
-                onChange={(e) => handleInputChange('sashToEaves', e.target.value)}
-                onFocus={handleInputFocus}
-                className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
+        let status = '';
+        let message = '';
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                サッシの飛び出し寸法 (mm)
-              </label>
-              <input
-                type="number"
-                value={inputs.sashProjection}
-                onChange={(e) => handleInputChange('sashProjection', e.target.value)}
-                onFocus={handleInputFocus}
-                className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
+        if (clearance >= 10) {
+          status = 'safe';
+          message = `干渉しません。母屋屋根先端とのクリアランス: ${clearance.toFixed(0)}mm`;
+        } else if (clearance >= 0) {
+          status = 'warning';
+          message = `干渉する可能性があります。クリアランス: ${clearance.toFixed(0)}mm（10mm未満）`;
+        } else {
+          status = 'danger';
+          message = `干渉します！クリアランス: ${clearance.toFixed(0)}mm`;
+        }
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                垂木のサイズ（厚み） (mm)
-              </label>
-              <input
-                type="number"
-                value={inputs.rafterSize}
-                onChange={(e) => handleInputChange('rafterSize', e.target.value)}
-                onFocus={handleInputFocus}
-                className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
+        setResults({
+          mainRoofAngle: mainRoofAngle.toFixed(1),
+          mainRoofVertical: mainRoofVertical.toFixed(0),
+          rafterTopHeight: rafterTopHeight.toFixed(1),
+          rafterAdjustment: rafterAdjustment.toFixed(1),
+          clearance: clearance.toFixed(1),
+          status,
+          message
+        });
+      };
+
+      const handleInputChange = (field, value) => {
+        const val = value === '' ? 0 : parseFloat(value);
+        setInputs(prev => ({
+          ...prev,
+          [field]: val || 0
+        }));
+      };
+
+      const handleInputFocus = (e) => {
+        e.target.value = '';
+      };
+
+      return (
+        <div className="max-w-7xl mx-auto p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+          <div className="mb-8">
+            <h1 className="text-4xl font-bold text-gray-800 mb-2">アルミテラス屋根 干渉チェック</h1>
+            <p className="text-gray-600">母屋屋根とテラス屋根（10°勾配）の干渉を計算・視覚化します</p>
           </div>
-        </div>
-
-        <div className="lg:col-span-3 bg-white rounded-xl shadow-lg p-6">
-          <h2 className="text-2xl font-semibold text-gray-800 mb-6 border-b pb-3">判定結果</h2>
           
-          {results && (
-            <div className="space-y-5">
-              <div className={`p-5 rounded-xl border-4 ${
-                results.status === 'safe' ? 'bg-green-50 border-green-400' :
-                results.status === 'warning' ? 'bg-yellow-50 border-yellow-400' :
-                'bg-red-50 border-red-400'
-              }`}>
-                <div className="flex items-start">
-                  {results.status === 'safe' && <CheckCircle className="w-8 h-8 text-green-600 mr-3 flex-shrink-0" />}
-                  {results.status === 'warning' && <AlertCircle className="w-8 h-8 text-yellow-600 mr-3 flex-shrink-0" />}
-                  {results.status === 'danger' && <AlertTriangle className="w-8 h-8 text-red-600 mr-3 flex-shrink-0" />}
-                  <div>
-                    <p className={`font-bold text-xl ${
-                      results.status === 'safe' ? 'text-green-700' :
-                      results.status === 'warning' ? 'text-yellow-700' :
-                      'text-red-700'
-                    }`}>
-                      {results.message}
-                    </p>
+          <div className="grid lg:grid-cols-5 gap-6 mb-6">
+            <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
+              <h2 className="text-2xl font-semibold text-gray-800 mb-6 border-b pb-3">寸法入力</h2>
+              
+              <div className="space-y-5">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    母屋屋根の斜め寸法 (mm)
+                  </label>
+                  <input
+                    type="number"
+                    value={inputs.mainRoofSlant}
+                    onChange={(e) => handleInputChange('mainRoofSlant', e.target.value)}
+                    onFocus={handleInputFocus}
+                    className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    母屋屋根の水平寸法 (mm)
+                  </label>
+                  <input
+                    type="number"
+                    value={inputs.mainRoofHorizontal}
+                    onChange={(e) => handleInputChange('mainRoofHorizontal', e.target.value)}
+                    onFocus={handleInputFocus}
+                    className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    サッシ上端から軒天までの高さ (mm)
+                  </label>
+                  <input
+                    type="number"
+                    value={inputs.sashToEaves}
+                    onChange={(e) => handleInputChange('sashToEaves', e.target.value)}
+                    onFocus={handleInputFocus}
+                    className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    サッシの飛び出し寸法 (mm)
+                  </label>
+                  <input
+                    type="number"
+                    value={inputs.sashProjection}
+                    onChange={(e) => handleInputChange('sashProjection', e.target.value)}
+                    onFocus={handleInputFocus}
+                    className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    垂木のサイズ（厚み） (mm)
+                  </label>
+                  <input
+                    type="number"
+                    value={inputs.rafterSize}
+                    onChange={(e) => handleInputChange('rafterSize', e.target.value)}
+                    onFocus={handleInputFocus}
+                    className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-3 bg-white rounded-xl shadow-lg p-6">
+              <h2 className="text-2xl font-semibold text-gray-800 mb-6 border-b pb-3">判定結果</h2>
+              
+              {results && (
+                <div className="space-y-5">
+                  <div className={`p-5 rounded-xl border-4 ${
+                    results.status === 'safe' ? 'bg-green-50 border-green-400' :
+                    results.status === 'warning' ? 'bg-yellow-50 border-yellow-400' :
+                    'bg-red-50 border-red-400'
+                  }`}>
+                    <div className="flex items-start">
+                      {results.status === 'safe' && <CheckCircle className="w-8 h-8 text-green-600 mr-3 flex-shrink-0" />}
+                      {results.status === 'warning' && <AlertCircle className="w-8 h-8 text-yellow-600 mr-3 flex-shrink-0" />}
+                      {results.status === 'danger' && <AlertTriangle className="w-8 h-8 text-red-600 mr-3 flex-shrink-0" />}
+                      <div>
+                        <p className={`font-bold text-xl ${
+                          results.status === 'safe' ? 'text-green-700' :
+                          results.status === 'warning' ? 'text-yellow-700' :
+                          'text-red-700'
+                        }`}>
+                          {results.message}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <p className="text-sm text-gray-600 mb-1">母屋屋根の勾配</p>
+                      <p className="text-2xl font-bold text-gray-800">{results.mainRoofAngle}°</p>
+                    </div>
+
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                      <p className="text-sm text-gray-600 mb-1">垂木掛け高さ</p>
+                      <p className="text-2xl font-bold text-blue-700">{results.rafterTopHeight} mm</p>
+                      {parseFloat(results.rafterAdjustment) > 0 && (
+                        <p className="text-xs text-blue-600 mt-1">
+                          ⚠ サッシ干渉のため +{results.rafterAdjustment}mm 上げる必要があります
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-600 mb-1">母屋屋根の勾配</p>
-                  <p className="text-2xl font-bold text-gray-800">{results.mainRoofAngle}°</p>
-                </div>
-
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-600 mb-1">垂木掛け高さ</p>
-                  <p className="text-2xl font-bold text-blue-700">{results.rafterTopHeight} mm</p>
-                  {parseFloat(results.rafterAdjustment) > 0 && (
-                    <p className="text-xs text-blue-600 mt-1">
-                      ⚠ サッシ干渉のため +{results.rafterAdjustment}mm 上げる必要があります
-                    </p>
-                  )}
-                </div>
-              </div>
+              )}
             </div>
-          )}
-        </div>
-      </div>
+          </div>
 
-      {results && (
-        <div className="bg-white rounded-xl shadow-lg p-8">
-          <h2 className="text-2xl font-semibold text-gray-800 mb-6">断面図（視覚化）</h2>
-          <svg viewBox="0 0 1200 700" className="w-full border-4 border-gray-300 rounded-lg bg-gradient-to-b from-sky-50 to-white">
-            {(() => {
-              const scale = 0.8;
-              const wallX = 200;
-              const sashTopY = 500;
-              
-              const eaveY = sashTopY - inputs.sashToEaves * scale;
-              const rafterTopY = sashTopY - parseFloat(results.rafterTopHeight) * scale;
-              const rafterBottomY = rafterTopY + inputs.rafterSize * scale;
-              const mainRoofEndX = wallX + inputs.mainRoofHorizontal * scale;
-              const mainRoofEndY = eaveY + parseFloat(results.mainRoofVertical) * scale;
-              
-              const terraceEndX = mainRoofEndX + 200;
-              const terraceTopEndY = rafterTopY + (terraceEndX - wallX) / scale * Math.tan(TERRACE_SLOPE * Math.PI / 180) * scale;
-              
-              return (
-                <>
-                  {/* テラス屋根 - 最背面 */}
-                  <line
-                    x1={wallX}
-                    y1={rafterTopY}
-                    x2={terraceEndX}
-                    y2={terraceTopEndY}
-                    stroke="#1E90FF"
-                    strokeWidth={inputs.rafterSize * scale}
-                    strokeLinecap="round"
-                  />
+          {results && (
+            <div className="bg-white rounded-xl shadow-lg p-8">
+              <h2 className="text-2xl font-semibold text-gray-800 mb-6">断面図（視覚化）</h2>
+              <svg viewBox="0 0 1200 700" className="w-full border-4 border-gray-300 rounded-lg bg-gradient-to-b from-sky-50 to-white">
+                {(() => {
+                  const scale = 0.8;
+                  const wallX = 200;
+                  const sashTopY = 500;
                   
-                  {/* 外壁 */}
-                  <rect x={wallX - 20} y={100} width="20" height="600" fill="#D3D3D3" stroke="#666" strokeWidth="3" />
-                  <text x={wallX - 60} y="80" fontSize="18" fill="#333" fontWeight="bold">外壁</text>
+                  const eaveY = sashTopY - inputs.sashToEaves * scale;
+                  const rafterTopY = sashTopY - parseFloat(results.rafterTopHeight) * scale;
+                  const mainRoofEndX = wallX + inputs.mainRoofHorizontal * scale;
+                  const mainRoofEndY = eaveY + parseFloat(results.mainRoofVertical) * scale;
                   
-                  {/* サッシ - 下まで伸ばす */}
-                  <rect
-                    x={wallX}
-                    y={sashTopY - 60}
-                    width={inputs.sashProjection * scale}
-                    height="660"
-                    fill="#87CEEB"
-                    stroke="#4682B4"
-                    strokeWidth="3"
-                  />
-                  <text x={wallX + 10} y={sashTopY - 75} fontSize="14" fill="#000" fontWeight="bold">サッシ</text>
-                  <line x1={wallX} y1={sashTopY} x2={wallX + Math.max(inputs.sashProjection * scale + 50, 100)} y2={sashTopY} stroke="#333" strokeWidth="2" strokeDasharray="5,5" />
-                  <text x={wallX + Math.max(inputs.sashProjection * scale + 55, 105)} y={sashTopY + 5} fontSize="12" fill="#333">サッシ上端</text>
+                  const terraceEndX = mainRoofEndX + 200;
+                  const terraceTopEndY = rafterTopY + (terraceEndX - wallX) / scale * Math.tan(TERRACE_SLOPE * Math.PI / 180) * scale;
                   
-                  {/* 母屋屋根 */}
-                  <line
-                    x1={wallX}
-                    y1={eaveY}
-                    x2={mainRoofEndX}
-                    y2={mainRoofEndY}
-                    stroke="#8B4513"
-                    strokeWidth="16"
-                    strokeLinecap="round"
-                  />
-                  
-                  {/* 母屋屋根ラベル - 背景付き */}
-                  <rect x={wallX + 80} y={eaveY - 50} width="180" height="28" fill="white" stroke="#8B4513" strokeWidth="2" rx="5" />
-                  <text x={wallX + 90} y={eaveY - 28} fontSize="16" fill="#8B4513" fontWeight="bold">
-                    母屋屋根 ({results.mainRoofAngle}°)
-                  </text>
-                  
-                  {/* 軒天ライン */}
-                  <line
-                    x1={wallX}
-                    y1={eaveY}
-                    x2={mainRoofEndX + 50}
-                    y2={eaveY}
-                    stroke="#666"
-                    strokeWidth="2"
-                    strokeDasharray="8,4"
-                  />
-                  <rect x={wallX + 15} y={eaveY + 5} width="55" height="22" fill="white" stroke="#666" strokeWidth="1" rx="3" />
-                  <text x={wallX + 20} y={eaveY + 20} fontSize="12" fill="#666" fontWeight="bold">軒天</text>
-                  
-                  {/* 垂木掛け - 青い線（垂木）と完全に一致させる */}
-                  <rect
-                    x={wallX - inputs.rafterSize * scale / 2}
-                    y={rafterTopY - inputs.rafterSize * scale / 2}
-                    width={inputs.rafterSize * scale}
-                    height={inputs.rafterSize * scale}
-                    fill="#FFB347"
-                    stroke="#FF8C00"
-                    strokeWidth="2"
-                  />
-                  <circle cx={wallX} cy={rafterTopY} r="4" fill="#FFD700" stroke="#000" strokeWidth="1" />
-                  
-                  {/* 垂木掛けラベル - 背景付き */}
-                  <rect x={wallX + 25} y={rafterTopY - inputs.rafterSize * scale / 2 - 5} width="80" height="22" fill="white" stroke="#FF8C00" strokeWidth="2" rx="3" />
-                  <text x={wallX + 30} y={rafterTopY - inputs.rafterSize * scale / 2 + 10} fontSize="13" fill="#FF8C00" fontWeight="bold">垂木掛け</text>
-                  
-                  {/* テラス屋根ラベル - 背景付き */}
-                  <rect x={wallX + 220} y={rafterTopY - 55} width="170" height="30" fill="white" stroke="#1E90FF" strokeWidth="2" rx="5" />
-                  <text x={wallX + 235} y={rafterTopY - 33} fontSize="17" fill="#1E90FF" fontWeight="bold">
-                    テラス屋根 (10°)
-                  </text>
-                  
-                  {/* クリアランス表示 */}
-                  {(() => {
-                    const terraceTopAtEaveX = mainRoofEndX;
-                    const terraceTopAtEaveY = rafterTopY + (mainRoofEndX - wallX) / scale * Math.tan(TERRACE_SLOPE * Math.PI / 180) * scale;
-                    
-                    return (
-                      <>
-                        <line
-                          x1={terraceTopAtEaveX}
-                          y1={mainRoofEndY}
-                          x2={terraceTopAtEaveX}
-                          y2={terraceTopAtEaveY}
-                          stroke="#FF4500"
-                          strokeWidth="4"
-                        />
-                        <line
-                          x1={terraceTopAtEaveX - 10}
-                          y1={mainRoofEndY}
-                          x2={terraceTopAtEaveX + 10}
-                          y2={mainRoofEndY}
-                          stroke="#FF4500"
-                          strokeWidth="4"
-                        />
-                        <line
-                          x1={terraceTopAtEaveX - 10}
-                          y1={terraceTopAtEaveY}
-                          x2={terraceTopAtEaveX + 10}
-                          y2={terraceTopAtEaveY}
-                          stroke="#FF4500"
-                          strokeWidth="4"
-                        />
-                        
-                        <rect
-                          x={terraceTopAtEaveX + 15}
-                          y={(mainRoofEndY + terraceTopAtEaveY) / 2 - 25}
-                          width="140"
-                          height="50"
-                          fill="white"
-                          stroke="#FF4500"
-                          strokeWidth="3"
-                          rx="5"
-                        />
-                        <text
-                          x={terraceTopAtEaveX + 25}
-                          y={(mainRoofEndY + terraceTopAtEaveY) / 2 - 5}
-                          fontSize="16"
-                          fill="#333"
-                          fontWeight="bold"
-                        >
-                          クリアランス
-                        </text>
-                        <text
-                          x={terraceTopAtEaveX + 45}
-                          y={(mainRoofEndY + terraceTopAtEaveY) / 2 + 15}
-                          fontSize="22"
-                          fill="#FF4500"
-                          fontWeight="bold"
-                        >
-                          {results.clearance}mm
-                        </text>
-                      </>
-                    );
-                  })()}
-                  
-                  {/* 垂木掛け高さ寸法 */}
-                  <line x1={wallX - 80} y1={sashTopY} x2={wallX - 80} y2={rafterTopY} stroke="#2E8B57" strokeWidth="3" />
-                  <line x1={wallX - 90} y1={sashTopY} x2={wallX - 70} y2={sashTopY} stroke="#2E8B57" strokeWidth="3" />
-                  <line x1={wallX - 90} y1={rafterTopY} x2={wallX - 70} y2={rafterTopY} stroke="#2E8B57" strokeWidth="3" />
-                  
-                  {/* 寸法ラベル - 背景付き */}
-                  <rect x={wallX - 195} y={(sashTopY + rafterTopY) / 2 - 18} width="110" height="36" fill="white" stroke="#2E8B57" strokeWidth="2" rx="3" />
-                  <text x={wallX - 190} y={(sashTopY + rafterTopY) / 2 + 5} fontSize="16" fill="#2E8B57" fontWeight="bold">
-                    {results.rafterTopHeight}mm
-                  </text>
-                  
-                  {/* 垂木掛け調整表示 - サッシ飛び出し位置での垂木下端付近に表示 */}
-                  {parseFloat(results.rafterAdjustment) > 0 && (
+                  return (
                     <>
-                      {/* サッシ飛び出し位置での垂木下端の高さを計算 */}
+                      <line
+                        x1={wallX}
+                        y1={rafterTopY}
+                        x2={terraceEndX}
+                        y2={terraceTopEndY}
+                        stroke="#1E90FF"
+                        strokeWidth={inputs.rafterSize * scale}
+                        strokeLinecap="round"
+                      />
+                      
+                      <rect x={wallX - 20} y={100} width="20" height="600" fill="#D3D3D3" stroke="#666" strokeWidth="3" />
+                      <text x={wallX - 60} y="80" fontSize="18" fill="#333" fontWeight="bold">外壁</text>
+                      
+                      <rect
+                        x={wallX}
+                        y={sashTopY - 60}
+                        width={inputs.sashProjection * scale}
+                        height="660"
+                        fill="#87CEEB"
+                        stroke="#4682B4"
+                        strokeWidth="3"
+                      />
+                      <text x={wallX + 10} y={sashTopY - 75} fontSize="14" fill="#000" fontWeight="bold">サッシ</text>
+                      <line x1={wallX} y1={sashTopY} x2={wallX + Math.max(inputs.sashProjection * scale + 50, 100)} y2={sashTopY} stroke="#333" strokeWidth="2" strokeDasharray="5,5" />
+                      <text x={wallX + Math.max(inputs.sashProjection * scale + 55, 105)} y={sashTopY + 5} fontSize="12" fill="#333">サッシ上端</text>
+                      
+                      <line
+                        x1={wallX}
+                        y1={eaveY}
+                        x2={mainRoofEndX}
+                        y2={mainRoofEndY}
+                        stroke="#8B4513"
+                        strokeWidth="16"
+                        strokeLinecap="round"
+                      />
+                      
+                      <rect x={wallX + 80} y={eaveY - 50} width="180" height="28" fill="white" stroke="#8B4513" strokeWidth="2" rx="5" />
+                      <text x={wallX + 90} y={eaveY - 28} fontSize="16" fill="#8B4513" fontWeight="bold">
+                        母屋屋根 ({results.mainRoofAngle}°)
+                      </text>
+                      
+                      <line
+                        x1={wallX}
+                        y1={eaveY}
+                        x2={mainRoofEndX + 50}
+                        y2={eaveY}
+                        stroke="#666"
+                        strokeWidth="2"
+                        strokeDasharray="8,4"
+                      />
+                      <rect x={wallX + 15} y={eaveY + 5} width="55" height="22" fill="white" stroke="#666" strokeWidth="1" rx="3" />
+                      <text x={wallX + 20} y={eaveY + 20} fontSize="12" fill="#666" fontWeight="bold">軒天</text>
+                      
+                      <rect
+                        x={wallX - inputs.rafterSize * scale / 2}
+                        y={rafterTopY - inputs.rafterSize * scale / 2}
+                        width={inputs.rafterSize * scale}
+                        height={inputs.rafterSize * scale}
+                        fill="#FFB347"
+                        stroke="#FF8C00"
+                        strokeWidth="2"
+                      />
+                      <circle cx={wallX} cy={rafterTopY} r="4" fill="#FFD700" stroke="#000" strokeWidth="1" />
+                      
+                      <rect x={wallX + 25} y={rafterTopY - inputs.rafterSize * scale / 2 - 5} width="80" height="22" fill="white" stroke="#FF8C00" strokeWidth="2" rx="3" />
+                      <text x={wallX + 30} y={rafterTopY - inputs.rafterSize * scale / 2 + 10} fontSize="13" fill="#FF8C00" fontWeight="bold">垂木掛け</text>
+                      
+                      <rect x={wallX + 220} y={rafterTopY - 55} width="170" height="30" fill="white" stroke="#1E90FF" strokeWidth="2" rx="5" />
+                      <text x={wallX + 235} y={rafterTopY - 33} fontSize="17" fill="#1E90FF" fontWeight="bold">
+                        テラス屋根 (10°)
+                      </text>
+                      
                       {(() => {
-                        const sashEdgeX = wallX + inputs.sashProjection * scale;
-                        const rafterDropAtSashEdge = inputs.sashProjection * Math.tan(TERRACE_SLOPE * Math.PI / 180) * scale;
-                        const rafterBottomAtSashEdge = rafterTopY + rafterDropAtSashEdge + inputs.rafterSize * scale;
+                        const terraceTopAtEaveX = mainRoofEndX;
+                        const terraceTopAtEaveY = rafterTopY + (mainRoofEndX - wallX) / scale * Math.tan(TERRACE_SLOPE * Math.PI / 180) * scale;
                         
                         return (
                           <>
-                            {/* サッシ上端から垂木下端までの寸法線 */}
                             <line
-                              x1={sashEdgeX + 10}
-                              y1={sashTopY}
-                              x2={sashEdgeX + 10}
-                              y2={rafterBottomAtSashEdge}
-                              stroke="#FF8C00"
-                              strokeWidth="3"
+                              x1={terraceTopAtEaveX}
+                              y1={mainRoofEndY}
+                              x2={terraceTopAtEaveX}
+                              y2={terraceTopAtEaveY}
+                              stroke="#FF4500"
+                              strokeWidth="4"
                             />
-                            <line x1={sashEdgeX + 5} y1={sashTopY} x2={sashEdgeX + 15} y2={sashTopY} stroke="#FF8C00" strokeWidth="3" />
-                            <line x1={sashEdgeX + 5} y1={rafterBottomAtSashEdge} x2={sashEdgeX + 15} y2={rafterBottomAtSashEdge} stroke="#FF8C00" strokeWidth="3" />
+                            <line
+                              x1={terraceTopAtEaveX - 10}
+                              y1={mainRoofEndY}
+                              x2={terraceTopAtEaveX + 10}
+                              y2={mainRoofEndY}
+                              stroke="#FF4500"
+                              strokeWidth="4"
+                            />
+                            <line
+                              x1={terraceTopAtEaveX - 10}
+                              y1={terraceTopAtEaveY}
+                              x2={terraceTopAtEaveX + 10}
+                              y2={terraceTopAtEaveY}
+                              stroke="#FF4500"
+                              strokeWidth="4"
+                            />
                             
-                            <rect 
-                              x={sashEdgeX + 20} 
-                              y={(sashTopY + rafterBottomAtSashEdge) / 2 - 15} 
-                              width="100" 
-                              height="30" 
-                              fill="white" 
-                              stroke="#FF8C00" 
-                              strokeWidth="2" 
-                              rx="3"
+                            <rect
+                              x={terraceTopAtEaveX + 15}
+                              y={(mainRoofEndY + terraceTopAtEaveY) / 2 - 25}
+                              width="140"
+                              height="50"
+                              fill="white"
+                              stroke="#FF4500"
+                              strokeWidth="3"
+                              rx="5"
                             />
                             <text
-                              x={sashEdgeX + 25}
-                              y={(sashTopY + rafterBottomAtSashEdge) / 2 + 5}
-                              fontSize="14"
-                              fill="#FF8C00"
+                              x={terraceTopAtEaveX + 25}
+                              y={(mainRoofEndY + terraceTopAtEaveY) / 2 - 5}
+                              fontSize="16"
+                              fill="#333"
                               fontWeight="bold"
                             >
-                              +{results.rafterAdjustment}mm
+                              クリアランス
+                            </text>
+                            <text
+                              x={terraceTopAtEaveX + 45}
+                              y={(mainRoofEndY + terraceTopAtEaveY) / 2 + 15}
+                              fontSize="22"
+                              fill="#FF4500"
+                              fontWeight="bold"
+                            >
+                              {results.clearance}mm
                             </text>
                           </>
                         );
                       })()}
+                      
+                      <line x1={wallX - 80} y1={sashTopY} x2={wallX - 80} y2={rafterTopY} stroke="#2E8B57" strokeWidth="3" />
+                      <line x1={wallX - 90} y1={sashTopY} x2={wallX - 70} y2={sashTopY} stroke="#2E8B57" strokeWidth="3" />
+                      <line x1={wallX - 90} y1={rafterTopY} x2={wallX - 70} y2={rafterTopY} stroke="#2E8B57" strokeWidth="3" />
+                      
+                      <rect x={wallX - 195} y={(sashTopY + rafterTopY) / 2 - 18} width="110" height="36" fill="white" stroke="#2E8B57" strokeWidth="2" rx="3" />
+                      <text x={wallX - 190} y={(sashTopY + rafterTopY) / 2 + 5} fontSize="16" fill="#2E8B57" fontWeight="bold">
+                        {results.rafterTopHeight}mm
+                      </text>
+                      
+                      {parseFloat(results.rafterAdjustment) > 0 && (
+                        <>
+                          {(() => {
+                            const sashEdgeX = wallX + inputs.sashProjection * scale;
+                            const rafterDropAtSashEdge = inputs.sashProjection * Math.tan(TERRACE_SLOPE * Math.PI / 180) * scale;
+                            const rafterBottomAtSashEdge = rafterTopY + rafterDropAtSashEdge + inputs.rafterSize * scale;
+                            
+                            return (
+                              <>
+                                <line
+                                  x1={sashEdgeX + 10}
+                                  y1={sashTopY}
+                                  x2={sashEdgeX + 10}
+                                  y2={rafterBottomAtSashEdge}
+                                  stroke="#FF8C00"
+                                  strokeWidth="3"
+                                />
+                                <line x1={sashEdgeX + 5} y1={sashTopY} x2={sashEdgeX + 15} y2={sashTopY} stroke="#FF8C00" strokeWidth="3" />
+                                <line x1={sashEdgeX + 5} y1={rafterBottomAtSashEdge} x2={sashEdgeX + 15} y2={rafterBottomAtSashEdge} stroke="#FF8C00" strokeWidth="3" />
+                                
+                                <rect 
+                                  x={sashEdgeX + 20} 
+                                  y={(sashTopY + rafterBottomAtSashEdge) / 2 - 15} 
+                                  width="100" 
+                                  height="30" 
+                                  fill="white" 
+                                  stroke="#FF8C00" 
+                                  strokeWidth="2" 
+                                  rx="3"
+                                />
+                                <text
+                                  x={sashEdgeX + 25}
+                                  y={(sashTopY + rafterBottomAtSashEdge) / 2 + 5}
+                                  fontSize="14"
+                                  fill="#FF8C00"
+                                  fontWeight="bold"
+                                >
+                                  +{results.rafterAdjustment}mm
+                                </text>
+                              </>
+                            );
+                          })()}
+                        </>
+                      )}
                     </>
-                  )}
-                </>
-              );
-            })()}
-          </svg>
-          
-          <div className="mt-6 p-5 bg-blue-50 border-l-4 border-blue-500 rounded">
-            <p className="text-gray-800 leading-relaxed">
-              <span className="font-bold text-blue-700">図の説明：</span>
-              <span className="text-blue-600 font-semibold"> 青線</span>がテラス屋根（10°勾配で外側に下がる）、
-              <span className="text-amber-700 font-semibold"> 茶色線</span>が母屋屋根です。
-              <span className="text-red-600 font-semibold"> 赤い寸法線</span>が母屋屋根先端とテラス屋根のクリアランスを示します。
-              {parseFloat(results.rafterAdjustment) > 0 && 
-                <span className="text-orange-600 font-semibold"> オレンジの点線はサッシ干渉を避けるための調整量です。</span>
-              }
-            </p>
-          </div>
+                  );
+                })()}
+              </svg>
+              
+              <div className="mt-6 p-5 bg-blue-50 border-l-4 border-blue-500 rounded">
+                <p className="text-gray-800 leading-relaxed">
+                  <span className="font-bold text-blue-700">図の説明：</span>
+                  <span className="text-blue-600 font-semibold"> 青線</span>がテラス屋根（10°勾配で外側に下がる）、
+                  <span className="text-amber-700 font-semibold"> 茶色線</span>が母屋屋根です。
+                  <span className="text-red-600 font-semibold"> 赤い寸法線</span>が母屋屋根先端とテラス屋根のクリアランスを示します。
+                  {parseFloat(results.rafterAdjustment) > 0 && 
+                    <span className="text-orange-600 font-semibold"> オレンジの点線はサッシ干渉を避けるための調整量です。</span>
+                  }
+                </p>
+              </div>
+            </div>
+          )}
         </div>
-      )}
-    </div>
-  );
-}
+      );
+    }
+
+    ReactDOM.render(<TerraceRoofCalculator />, document.getElementById('root'));
+  </script>
+</body>
+</html>
